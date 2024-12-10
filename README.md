@@ -17,8 +17,8 @@ The Secure File Sharing System is a robust platform designed to facilitate the s
 
 
 ---
----
-##Features to be implemented
+
+## Features to be implemented
 
 - **High-level User Authentication:** Login using multi-factor authentication (MFA).
 - **File Integrity Verification:** Prevent unauthorized modifications using hash-based verification.

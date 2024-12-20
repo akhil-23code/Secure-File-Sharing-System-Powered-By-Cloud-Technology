@@ -280,12 +280,24 @@ http.listen(3000, function () {
             });
         });
 
-        // get all files shared with logged-in user
-        app.get("/SharedWithMe/:_id?", async function (request, result) {
-            result.render("SharedWithMe", {
-                "request": request
-            });
-        });
+        // Get all files shared with the logged-in user
+app.get("/SharedWithMe", async function (request, result) {
+    if (!request.session.user) {
+        return result.redirect("/Login");
+    }
+
+    const user = await database.collection("users").findOne({
+        _id: ObjectId(request.session.user._id)
+    });
+
+    const sharedFiles = user.sharedWithMe || []; // Retrieve files shared with the user
+
+    result.render("SharedWithMe", {
+        request,
+        sharedFiles // Pass shared files to the frontend
+    });
+});
+
 
         app.post("/DeleteLink", async function (request, result) {
 

@@ -53,11 +53,6 @@
                                         </div>
                                         <button type="submit" class="btn btn-primary">Share</button>
                                     </form>
-                                    <a href="<%= request.mainURL %>/DownloadFile/<%= singleFile._id %>" 
-                                        class="btn btn-success btn-block" 
-                                        download>
-                                        Download
-                                    </a>
                                 </div>
                             </div>
                         </div>
@@ -88,7 +83,7 @@
                 </button>
             </div>
             <div class="modal-body">
-                <a href="" id="download-button" class="btn btn-success" download>Download</a>
+                <button type='button' class='btn btn-success' onclick='downloadFile(this);' id='download-button'>Download</button>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
@@ -101,6 +96,7 @@
                    </div>
                    <button type="submit" class="btn btn-primary">Share</button>
                 </form>
+
 
                 <button type="button" class="btn btn-primary" onclick="shareViaLink();">Share via link</button>
 
@@ -139,7 +135,7 @@
 
         document.querySelector("#viewFileModal .modal-title").innerHTML = name;
 
-        document.querySelector("#download-button").setAttribute("href", `<%= request.mainURL %>/DownloadFile/${_id}`);
+        document.querySelector("#download-button").setAttribute("data-id", _id);
 
         document.getElementById("form-delete-file")._id.value = _id;
         document.getElementById("form-share-via-link")._id.value = _id;
@@ -149,7 +145,7 @@
 
     function downloadFile(self) {
         var _id = self.getAttribute("data-id");
-        window.location.href = `<%= request.mainURL %>/DownloadFile/${_id}`;
+        window.location.href = "<%= request.mainURL %>/DownloadFile/" + _id;
     }
 
     function shareViaLink() {

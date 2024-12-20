@@ -289,7 +289,43 @@ http.listen(3000, function () {
         });
 
 
-    app.get("/DownloadSharedFile/:fileId", async function (request, result) {
+//     app.get("/DownloadSharedFile/:fileId", async function (request, result) {
+//     if (!request.session.user) {
+//         return result.redirect("/Login");
+//     }
+
+//     try {
+//         const fileId = request.params.fileId;
+
+//         // Find the file in the `files` collection
+//         const file = await database.collection("files").findOne({
+//             _id: ObjectId(fileId),
+//         });
+
+//         if (!file) {
+//             request.session.status = "error";
+//             request.session.message = "File not found.";
+//             return result.redirect("/SharedWithMe");
+//         }
+
+//         // Decrypt the file if necessary
+//         const fileData = file.encrypted ? decrypt(file.data) : file.data;
+
+//         // Send the file as a download
+//         result.set({
+//             "Content-Type": file.type,
+//             "Content-Disposition": `attachment; filename="${file.name}"`,
+//         });
+
+//         result.send(Buffer.from(fileData, file.encrypted ? 'base64' : undefined));
+//       } catch (error) {
+//         console.error("Error downloading shared file:", error);
+//         request.session.status = "error";
+//         request.session.message = "Failed to download the file. Please try again.";
+//         return result.redirect("/SharedWithMe");
+//     }
+// });
+        app.get("/DownloadSharedFile/:fileId", async function (request, result) {
     if (!request.session.user) {
         return result.redirect("/Login");
     }
@@ -297,7 +333,7 @@ http.listen(3000, function () {
     try {
         const fileId = request.params.fileId;
 
-        // Find the file in the `files` collection
+        // Find the file in the database
         const file = await database.collection("files").findOne({
             _id: ObjectId(fileId),
         });
@@ -308,23 +344,21 @@ http.listen(3000, function () {
             return result.redirect("/SharedWithMe");
         }
 
-        // Decrypt the file if necessary
-        const fileData = file.encrypted ? decrypt(file.data) : file.data;
-
-        // Send the file as a download
+        // Send the file as a downloadable response
         result.set({
             "Content-Type": file.type,
             "Content-Disposition": `attachment; filename="${file.name}"`,
         });
 
-        result.send(Buffer.from(fileData, file.encrypted ? 'base64' : undefined));
-      } catch (error) {
+        result.send(Buffer.from(file.data, "base64"));
+    } catch (error) {
         console.error("Error downloading shared file:", error);
         request.session.status = "error";
         request.session.message = "Failed to download the file. Please try again.";
         return result.redirect("/SharedWithMe");
     }
 });
+
 
 
         
@@ -642,9 +676,89 @@ app.get("/SharedWithMe", async function (request, result) {
 
         // upload new file
         // upload new file
+// app.post("/UploadFile", async function (request, result) {
+//     if (request.session.user) {
+//         try {
+//             const user = await database.collection("users").findOne({
+//                 "_id": ObjectId(request.session.user._id)
+//             });
+
+//             if (!user) {
+//                 request.session.status = "error";
+//                 request.session.message = "User not found. Please log in again.";
+//                 return result.redirect("/Login");
+//             }
+
+//             if (request.files.file && request.files.file.size > 0) {
+//                 const fileBuffer = fileSystem.readFileSync(request.files.file.path);
+
+//                 // Encrypt the file
+//                 const encryptedFile = encrypt(fileBuffer);
+
+//                 // Prepare file metadata
+//                 const uploadedObj = {
+//                     _id: new ObjectId(), // Generate a new ObjectId
+//                     size: request.files.file.size,
+//                     name: request.files.file.name,
+//                     type: request.files.file.type,
+//                     encrypted: true, // Indicate encryption status
+//                     createdAt: new Date().getTime(),
+//                 };
+
+//                 // Save file metadata and encrypted content to the database
+//                 await database.collection("files").insertOne({
+//                     ...uploadedObj,
+//                     data: encryptedFile, // Store the encrypted file
+//                     uploadedBy: {
+//                         _id: user._id,
+//                         email: user.email,
+//                     },
+//                 });
+
+//                 // Add the uploaded file's metadata to the user's uploaded array
+//                 await database.collection("users").updateOne(
+//                     { "_id": ObjectId(request.session.user._id) },
+//                     { $push: { uploaded: uploadedObj } }
+//                 );
+
+//                 // Clean up temporary file
+//                 fileSystem.unlinkSync(request.files.file.path);
+
+//                 // Set success message and redirect
+//                 request.session.status = "success";
+//                 request.session.message = "File uploaded and encrypted successfully.";
+//                 return result.redirect("/MyUploads");
+//             }
+
+//             // Handle case where no valid file is selected
+//             request.session.status = "error";
+//             request.session.message = "Please select a valid file to upload.";
+//             return result.redirect("/MyUploads");
+//         } catch (error) {
+//             console.error("File upload error:", error);
+
+//             // Handle specific error for invalid ObjectId
+//             if (error instanceof mongodb.MongoServerError) {
+//                 request.session.message = "Invalid user ID format.";
+//             } else if (error.message.includes("ObjectId")) {
+//                 request.session.message = "Error processing file ID.";
+//             } else {
+//                 request.session.message = "File upload failed. Please try again.";
+//             }
+
+//             request.session.status = "error";
+//             return result.redirect("/MyUploads");
+//         }
+//     }
+
+//     // Redirect to login if session is not active
+//     result.redirect("/Login");
+// });
+        // Upload new file
 app.post("/UploadFile", async function (request, result) {
     if (request.session.user) {
         try {
+            // Fetch the logged-in user
             const user = await database.collection("users").findOne({
                 "_id": ObjectId(request.session.user._id)
             });
@@ -655,11 +769,9 @@ app.post("/UploadFile", async function (request, result) {
                 return result.redirect("/Login");
             }
 
+            // Check if a valid file is selected
             if (request.files.file && request.files.file.size > 0) {
                 const fileBuffer = fileSystem.readFileSync(request.files.file.path);
-
-                // Encrypt the file
-                const encryptedFile = encrypt(fileBuffer);
 
                 // Prepare file metadata
                 const uploadedObj = {
@@ -667,19 +779,16 @@ app.post("/UploadFile", async function (request, result) {
                     size: request.files.file.size,
                     name: request.files.file.name,
                     type: request.files.file.type,
-                    encrypted: true, // Indicate encryption status
-                    createdAt: new Date().getTime(),
-                };
-
-                // Save file metadata and encrypted content to the database
-                await database.collection("files").insertOne({
-                    ...uploadedObj,
-                    data: encryptedFile, // Store the encrypted file
+                    data: fileBuffer.toString("base64"), // Store file as base64
                     uploadedBy: {
                         _id: user._id,
                         email: user.email,
                     },
-                });
+                    createdAt: new Date().getTime(),
+                };
+
+                // Save file metadata and content to the database
+                await database.collection("files").insertOne(uploadedObj);
 
                 // Add the uploaded file's metadata to the user's uploaded array
                 await database.collection("users").updateOne(
@@ -692,7 +801,7 @@ app.post("/UploadFile", async function (request, result) {
 
                 // Set success message and redirect
                 request.session.status = "success";
-                request.session.message = "File uploaded and encrypted successfully.";
+                request.session.message = "File uploaded successfully.";
                 return result.redirect("/MyUploads");
             }
 
@@ -703,16 +812,9 @@ app.post("/UploadFile", async function (request, result) {
         } catch (error) {
             console.error("File upload error:", error);
 
-            // Handle specific error for invalid ObjectId
-            if (error instanceof mongodb.MongoServerError) {
-                request.session.message = "Invalid user ID format.";
-            } else if (error.message.includes("ObjectId")) {
-                request.session.message = "Error processing file ID.";
-            } else {
-                request.session.message = "File upload failed. Please try again.";
-            }
-
+            // General error handling
             request.session.status = "error";
+            request.session.message = "File upload failed. Please try again.";
             return result.redirect("/MyUploads");
         }
     }
@@ -720,6 +822,7 @@ app.post("/UploadFile", async function (request, result) {
     // Redirect to login if session is not active
     result.redirect("/Login");
 });
+
 
 
 

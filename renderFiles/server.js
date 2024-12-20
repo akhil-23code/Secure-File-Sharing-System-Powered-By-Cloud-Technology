@@ -211,22 +211,20 @@ function recursiveSearchShared(files, query) {
 }
 
 // start the http server
+const mongoURI = process.env.MONGO_URI;
 http.listen(3000, function () {
     console.log("Server started at " + mainURL);
 
     // connect with mongo DB server
     // mongoClient.connect("mongodb://localhost:27017", {
-    const mongoURI = process.env.MONGO_URI;
-mongoClient.connect(mongoURI, { useUnifiedTopology: true }, (error, client) => {
-    if (error) {
-        console.error("Database connection failed:", error);
-    } else {
-        database = client.db("file_transfer");
-        console.log("Database connected.");
-    }
-});
-
-
+    mongoClient.connect(mongoURI, { useUnifiedTopology: true }, (error, client) => {
+        if (error) {
+            console.error("Database connection failed:", error);
+        } else {
+            database = client.db("file_transfer");
+            console.log("Database connected.");
+        }
+        
         app.get("/pro-versions", function (request, result) {
             result.render("proVersions", {
                 "request": request

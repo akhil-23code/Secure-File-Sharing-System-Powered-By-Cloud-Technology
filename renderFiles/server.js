@@ -404,7 +404,7 @@ app.get("/SharedWithMe", async function (request, result) {
 
         app.post("/ShareViaLink", async function (request, result) {
     const _id = request.fields._id; // File ID
-    const sharedWithUsername = request.fields.sharedWithUsername; // Username of the recipient
+    const sharedWithName = request.fields.sharedWithUsername; // Name of the recipient
 
     if (request.session.user) {
         try {
@@ -422,8 +422,9 @@ app.get("/SharedWithMe", async function (request, result) {
                 return result.redirect("/MyUploads");
             }
 
+            // Find the recipient by the `name` field
             const user2 = await database.collection("users").findOne({
-                username: sharedWithUsername
+                name: { $regex: `^${sharedWithName}$`, $options: "i" } // Case-insensitive match
             });
 
             if (!user2) {
@@ -445,7 +446,7 @@ app.get("/SharedWithMe", async function (request, result) {
                 },
                 sharedWith: {
                     _id: user2._id,
-                    username: sharedWithUsername,
+                    name: user2.name,
                 },
                 createdAt: new Date(),
             });
@@ -460,7 +461,7 @@ app.get("/SharedWithMe", async function (request, result) {
                             name: file.name,
                             type: file.type,
                             size: file.size,
-                            sharedBy: user1.username,
+                            sharedBy: user1.name,
                             sharedAt: new Date(),
                         },
                     },
@@ -479,7 +480,8 @@ app.get("/SharedWithMe", async function (request, result) {
     }
 
     result.redirect("/Login");
-});     
+});
+
 
         
         // delete uploaded file

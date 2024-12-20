@@ -376,43 +376,66 @@ http.listen(3000, function () {
 
 
         app.post("/ShareViaLink", async function (request, result) {
-            const _id = request.fields._id;
-        
-            if (request.session.user) {
-                const user = await database.collection("users").findOne({
-                    "_id": ObjectId(request.session.user._id)
-                });
-        
-                const file = await database.collection("files").findOne({
-                    _id: ObjectId(_id)
-                });
-        
-                if (!file) {
-                    request.session.status = "error";
-                    request.session.message = "File does not exist.";
-                    return result.redirect("/MyUploads");
-                }
-        
-                const hash = crypto.randomBytes(16).toString("hex"); // Generate unique hash
-                const link = `${mainURL}/SharedViaLink/${hash}`; // Use updated mainURL
-        
-                await database.collection("public_links").insertOne({
-                    hash,
-                    file,
-                    uploadedBy: {
-                        _id: user._id,
-                        email: user.email,
-                    },
-                    createdAt: new Date(),
-                });
-        
-                request.session.status = "success";
-                request.session.message = `Sharable link: ${link}`;
-                return result.redirect("/MySharedLinks");
-            }
-        
-            result.redirect("/Login");
+    const _id = request.fields._id;
+    const sharedWithUsername = request.fields.sharedWith; // The username of User 2
+
+    if (request.session.user) {
+        const user1 = await database.collection("users").findOne({
+            "_id": ObjectId(request.session.user._id)
         });
+
+        const file = await database.collection("files").findOne({
+            _id: ObjectId(_id)
+        });
+
+        if (!file) {
+            request.session.status = "error";
+            request.session.message = "File does not exist.";
+            return result.redirect("/MyUploads");
+        }
+
+        const user2 = await database.collection("users").findOne({
+            username: sharedWithUsername
+        });
+
+        if (!user2) {
+            request.session.status = "error";
+            request.session.message = "The user you are sharing with does not exist.";
+            return result.redirect("/MyUploads");
+        }
+
+        const hash = crypto.randomBytes(16).toString("hex"); // Generate unique hash
+        const link = `${request.mainURL}/SharedViaLink/${hash}`;
+
+        // Save the sharable link in the `public_links` collection
+        await database.collection("public_links").insertOne({
+            hash,
+            file,
+            uploadedBy: {
+                _id: user1._id,
+                email: user1.email,
+            },
+            sharedWith: {
+                _id: user2._id,
+                username: sharedWithUsername,
+            },
+            createdAt: new Date(),
+        });
+
+        // Add file to "sharedWithMe" array of User 2
+        await database.collection("users").updateOne(
+            { _id: user2._id },
+            { $push: { sharedWithMe: file } }
+        );
+
+        request.session.status = "success";
+        request.session.message = `Sharable link: ${link}`;
+        return result.redirect("/MySharedLinks");
+    }
+
+    result.redirect("/Login");
+});
+
         
 
 

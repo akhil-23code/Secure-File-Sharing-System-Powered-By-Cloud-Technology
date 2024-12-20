@@ -317,8 +317,8 @@ http.listen(3000, function () {
             "Content-Disposition": `attachment; filename="${file.name}"`,
         });
 
-        result.send(Buffer.from(fileData));
-    } catch (error) {
+        result.send(Buffer.from(fileData, file.encrypted ? 'base64' : undefined));
+      } catch (error) {
         console.error("Error downloading shared file:", error);
         request.session.status = "error";
         request.session.message = "Failed to download the file. Please try again.";

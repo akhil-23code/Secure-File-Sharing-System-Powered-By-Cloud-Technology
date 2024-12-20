@@ -216,13 +216,16 @@ http.listen(3000, function () {
 
     // connect with mongo DB server
     // mongoClient.connect("mongodb://localhost:27017", {
-    mongoClient.connect("mongodb+srv://rameshthakur482666:BVObGaJId9ZI1aMH@el.8zzmj.mongodb.net/", {
-        useUnifiedTopology: true
-    }, function (error, client) {
-
-        // connect database (it will automatically create the database if not exists)
+    const mongoURI = process.env.MONGO_URI;
+mongoClient.connect(mongoURI, { useUnifiedTopology: true }, (error, client) => {
+    if (error) {
+        console.error("Database connection failed:", error);
+    } else {
         database = client.db("file_transfer");
         console.log("Database connected.");
+    }
+});
+
 
         app.get("/pro-versions", function (request, result) {
             result.render("proVersions", {

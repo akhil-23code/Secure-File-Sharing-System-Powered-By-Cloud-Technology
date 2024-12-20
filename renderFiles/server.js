@@ -45,7 +45,7 @@ app.use("/public/fonts", express.static(__dirname + "/public/fonts"));
 app.set("view engine", "ejs");
 
 // main URL of website
-var mainURL = "http://localhost:3000";
+var mainURL = "https://cloudhack-project.onrender.com";
 
 // global database object
 var database = null;

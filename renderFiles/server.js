@@ -294,16 +294,23 @@ app.get("/SharedWithMe", async function (request, result) {
         return result.redirect("/Login");
     }
 
-    const user = await database.collection("users").findOne({
-        _id: ObjectId(request.session.user._id)
-    });
+    try {
+        const user = await database.collection("users").findOne({
+            _id: ObjectId(request.session.user._id)
+        });
 
-    const sharedFiles = user.sharedWithMe || []; // Retrieve files shared with the user
+        const sharedFiles = user.sharedWithMe || [];
 
-    result.render("SharedWithMe", {
-        request,
-        sharedFiles // Pass shared files to the frontend
-    });
+        result.render("SharedWithMe", {
+            request,
+            sharedFiles, // Pass shared files to the template
+        });
+    } catch (error) {
+        console.error("Error fetching shared files:", error);
+        request.session.status = "error";
+        request.session.message = "Unable to fetch shared files.";
+        return result.redirect("/");
+    }
 });
 
 
@@ -397,79 +404,84 @@ app.get("/SharedWithMe", async function (request, result) {
 
         app.post("/ShareViaLink", async function (request, result) {
     const _id = request.fields._id; // File ID
-    const sharedWithUsername = request.fields.sharedWith; // Username of the recipient
+    const sharedWithUsername = request.fields.sharedWithUsername; // Username of the recipient
 
     if (request.session.user) {
-        const user1 = await database.collection("users").findOne({
-            "_id": ObjectId(request.session.user._id)
-        });
+        try {
+            const user1 = await database.collection("users").findOne({
+                "_id": ObjectId(request.session.user._id)
+            });
 
-        const file = await database.collection("files").findOne({
-            _id: ObjectId(_id)
-        });
+            const file = await database.collection("files").findOne({
+                _id: ObjectId(_id)
+            });
 
-        if (!file) {
-            request.session.status = "error";
-            request.session.message = "File does not exist.";
-            return result.redirect("/MyUploads");
-        }
-
-        const user2 = await database.collection("users").findOne({
-            username: sharedWithUsername
-        });
-
-        if (!user2) {
-            request.session.status = "error";
-            request.session.message = "The user you are sharing with does not exist.";
-            return result.redirect("/MyUploads");
-        }
-
-        const hash = crypto.randomBytes(16).toString("hex"); // Generate unique hash
-        const link = `${request.mainURL}/SharedViaLink/${hash}`;
-
-        // Save the sharable link in the `public_links` collection
-        await database.collection("public_links").insertOne({
-            hash,
-            file,
-            uploadedBy: {
-                _id: user1._id,
-                email: user1.email,
-            },
-            sharedWith: {
-                _id: user2._id,
-                username: sharedWithUsername,
-            },
-            createdAt: new Date(),
-        });
-
-        // Add the file to the `sharedWithMe` array of User 2
-        await database.collection("users").updateOne(
-            { _id: user2._id },
-            {
-                $push: {
-                    sharedWithMe: {
-                        _id: file._id,
-                        name: file.name,
-                        type: file.type,
-                        size: file.size,
-                        sharedBy: user1.username,
-                        sharedAt: new Date(),
-                    },
-                },
+            if (!file) {
+                request.session.status = "error";
+                request.session.message = "File does not exist.";
+                return result.redirect("/MyUploads");
             }
-        );
 
-        request.session.status = "success";
-        request.session.message = `Sharable link: ${link}`;
-        return result.redirect("/MySharedLinks");
+            const user2 = await database.collection("users").findOne({
+                username: sharedWithUsername
+            });
+
+            if (!user2) {
+                request.session.status = "error";
+                request.session.message = "The user you are sharing with does not exist.";
+                return result.redirect("/MyUploads");
+            }
+
+            const hash = crypto.randomBytes(16).toString("hex"); // Generate unique hash
+            const link = `${request.mainURL}/SharedViaLink/${hash}`;
+
+            // Save the sharable link
+            await database.collection("public_links").insertOne({
+                hash,
+                file,
+                uploadedBy: {
+                    _id: user1._id,
+                    email: user1.email,
+                },
+                sharedWith: {
+                    _id: user2._id,
+                    username: sharedWithUsername,
+                },
+                createdAt: new Date(),
+            });
+
+            // Add file to "sharedWithMe" array for User 2
+            await database.collection("users").updateOne(
+                { _id: user2._id },
+                {
+                    $push: {
+                        sharedWithMe: {
+                            _id: file._id,
+                            name: file.name,
+                            type: file.type,
+                            size: file.size,
+                            sharedBy: user1.username,
+                            sharedAt: new Date(),
+                        },
+                    },
+                }
+            );
+
+            request.session.status = "success";
+            request.session.message = `Sharable link: ${link}`;
+            return result.redirect("/MySharedLinks");
+        } catch (error) {
+            console.error("Error sharing file:", error);
+            request.session.status = "error";
+            request.session.message = "Failed to share the file. Please try again.";
+            return result.redirect("/MyUploads");
+        }
     }
 
     result.redirect("/Login");
-});
+});     
 
         
-
-
         // delete uploaded file
         app.post("/DeleteFile", async function (request, result) {
             const _id = request.fields._id;
@@ -607,39 +619,39 @@ app.get("/SharedWithMe", async function (request, result) {
                     size: request.files.file.size,
                     name: request.files.file.name,
                     type: request.files.file.type,
-                    encrypted: true, // Indicate the file is encrypted
+                    encrypted: true, // Indicate encryption status
                     createdAt: new Date().getTime(),
                 };
 
-                // Save the encrypted file's metadata and content to MongoDB
+                // Save file metadata and content to the database
                 await database.collection("files").insertOne({
                     ...uploadedObj,
-                    data: encryptedFile, // Store encrypted data
+                    data: encryptedFile,
                     uploadedBy: {
                         _id: user._id,
                         email: user.email,
                     },
                 });
 
-                // Update the `user.uploaded` array
+                // Add to user's uploaded files array
                 await database.collection("users").updateOne(
                     { "_id": ObjectId(request.session.user._id) },
                     { $push: { uploaded: uploadedObj } }
                 );
 
-                // Remove temporary file
+                // Clean up temporary file
                 fileSystem.unlinkSync(request.files.file.path);
 
                 request.session.status = "success";
-                request.session.message = "File has been uploaded and encrypted.";
+                request.session.message = "File uploaded and encrypted successfully.";
                 return result.redirect("/MyUploads");
             }
 
             request.session.status = "error";
-            request.session.message = "Please select a valid file.";
+            request.session.message = "Please select a valid file to upload.";
             return result.redirect("/MyUploads");
         } catch (error) {
-            console.error("Error uploading file:", error);
+            console.error("File upload error:", error);
             request.session.status = "error";
             request.session.message = "File upload failed. Please try again.";
             return result.redirect("/MyUploads");

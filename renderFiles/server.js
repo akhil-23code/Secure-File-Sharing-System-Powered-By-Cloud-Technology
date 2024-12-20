@@ -666,119 +666,70 @@ app.post("/DeleteFile", async function (request, result) {
 });
 
 
-        // // download file
-        // app.post("/DownloadFile", async function (request, result) {
-        //     const _id = request.fields._id;
+        // download file
+        app.post("/DownloadFile", async function (request, result) {
+            const _id = request.fields._id;
 
-        //     var link = await database.collection("public_links").findOne({
-        //         "file._id": ObjectId(_id)
-        //     });
+            var link = await database.collection("public_links").findOne({
+                "file._id": ObjectId(_id)
+            });
 
-        //     if (link != null) {
-        //         fileSystem.readFile(link.file.filePath, function (error, data) {
-        //             // console.log(error);
+            if (link != null) {
+                fileSystem.readFile(link.file.filePath, function (error, data) {
+                    // console.log(error);
 
-        //             result.json({
-        //                 "status": "success",
-        //                 "message": "Data has been fetched.",
-        //                 "arrayBuffer": data,
-        //                 "fileType": link.file.type,
-        //                 // "file": mainURL + "/" + file.filePath,
-        //                 "fileName": link.file.name
-        //             });
-        //         });
-        //         return false;
-        //     }
+                    result.json({
+                        "status": "success",
+                        "message": "Data has been fetched.",
+                        "arrayBuffer": data,
+                        "fileType": link.file.type,
+                        // "file": mainURL + "/" + file.filePath,
+                        "fileName": link.file.name
+                    });
+                });
+                return false;
+            }
 
-        //     if (request.session.user) {
+            if (request.session.user) {
 
-        //         var user = await database.collection("users").findOne({
-        //             "_id": ObjectId(request.session.user._id)
-        //         });
+                var user = await database.collection("users").findOne({
+                    "_id": ObjectId(request.session.user._id)
+                });
 
-        //         var fileUploaded = await recursiveGetFile(user.uploaded, _id);
+                var fileUploaded = await recursiveGetFile(user.uploaded, _id);
 
-        //         if (fileUploaded == null) {
-        //             result.json({
-        //                 "status": "error",
-        //                 "message": "File is neither uploaded nor shared with you."
-        //             });
-        //             return false;
-        //         }
+                if (fileUploaded == null) {
+                    result.json({
+                        "status": "error",
+                        "message": "File is neither uploaded nor shared with you."
+                    });
+                    return false;
+                }
 
-        //         var file = fileUploaded;
+                var file = fileUploaded;
 
-        //         fileSystem.readFile(file.filePath, function (error, data) {
-        //             // console.log(error);
+                fileSystem.readFile(file.filePath, function (error, data) {
+                    // console.log(error);
 
-        //             result.json({
-        //                 "status": "success",
-        //                 "message": "Data has been fetched.",
-        //                 "arrayBuffer": data,
-        //                 "fileType": file.type,
-        //                 // "file": mainURL + "/" + file.filePath,
-        //                 "fileName": file.name
-        //             });
-        //         });
-        //         return false;
-        //     }
+                    result.json({
+                        "status": "success",
+                        "message": "Data has been fetched.",
+                        "arrayBuffer": data,
+                        "fileType": file.type,
+                        // "file": mainURL + "/" + file.filePath,
+                        "fileName": file.name
+                    });
+                });
+                return false;
+            }
 
-        //     result.json({
-        //         "status": "error",
-        //         "message": "Please login to perform this action."
-        //     });
-        //     return false;
-        // });
-
-        // Download file
-app.get("/DownloadFile/:fileId", async function (request, result) {
-    const fileId = request.params.fileId;
-
-    try {
-        // Check if the file exists in the public links collection
-        const link = await database.collection("public_links").findOne({
-            "file._id": ObjectId(fileId),
+            result.json({
+                "status": "error",
+                "message": "Please login to perform this action."
+            });
+            return false;
         });
 
-        if (link) {
-            return result.download(link.file.filePath, link.file.name, function (err) {
-                if (err) {
-                    console.error("Error downloading file via public link:", err);
-                    result.status(500).send("Error downloading file.");
-                }
-            });
-        }
-
-        // If user is logged in, check their uploaded files
-        if (request.session.user) {
-            const user = await database.collection("users").findOne({
-                "_id": ObjectId(request.session.user._id),
-            });
-
-            if (!user) {
-                return result.status(403).send("User not found. Please log in.");
-            }
-
-            // Find the file in the user's uploaded files
-            const fileUploaded = await recursiveGetFile(user.uploaded, fileId);
-
-            if (fileUploaded) {
-                return result.download(fileUploaded.filePath, fileUploaded.name, function (err) {
-                    if (err) {
-                        console.error("Error downloading uploaded file:", err);
-                        result.status(500).send("Error downloading file.");
-                    }
-                });
-            }
-        }
-
-        // If no file is found, return an error
-        return result.status(404).send("File not found or access denied.");
-    } catch (error) {
-        console.error("Error in /DownloadFile route:", error);
-        result.status(500).send("An error occurred while processing the request.");
-    }
-});
 
 
         // view all files uploaded by logged-in user

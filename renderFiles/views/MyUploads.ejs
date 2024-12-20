@@ -89,8 +89,14 @@
                 <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
 
                 <form method="POST" action="<%= request.mainURL %>/ShareViaLink" id="form-share-via-link" style="display: contents;">
-                    <input type="hidden" name="_id" required />
+                   <div class="form-group">
+                       <label for="sharedWithUsername">Share with (name):</label>
+                       <input type="text" name="sharedWithUsername" id="sharedWithUsername" class="form-control" placeholder="Enter name" required>
+                       <input type="hidden" name="_id" required />
+                   </div>
+                   <button type="submit" class="btn btn-primary">Share</button>
                 </form>
+
 
                 <button type="button" class="btn btn-primary" onclick="shareViaLink();">Share via link</button>
 

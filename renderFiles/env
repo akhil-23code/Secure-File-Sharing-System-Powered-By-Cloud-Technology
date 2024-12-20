@@ -1,8 +1,0 @@
-# Secret key for encryption and decryption
-# use the below terminal cmd to get ur owm secret_key
-# node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-
-SECRET_KEY=0f7728054020ab4a985f8f5abe22d12d9d0d351918cecc81475609a7872a0940
-
-# MongoDB Atlas connection string
-MONGO_URI=mongodb+srv://rameshthakur482666:BVObGaJId9ZI1aMH@el.8zzmj.mongodb.net/file_transfer?retryWrites=true&w=majority

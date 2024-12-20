@@ -2,10 +2,11 @@ services:
   - type: web
     name: secure-file-sharing
     env: node
-    buildCommand: cd renderFiles && npm install
-    startCommand: cd renderFiles && node server.js
-    #envVars:
-    #  - key: MONGO_URI
-    #    value: "your_mongo_connection_string"
-    #  - key: SECRET_KEY
-    #    value: "your_secret_key"
+    rootDir: renderFiles # Specify the root directory
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: MONGO_URI
+        value: mongodb+srv://rameshthakur482666:BVObGaJId9ZI1aMH@el.8zzmj.mongodb.net/file_transfer?retryWrites=true&w=majority
+      - key: SECRET_KEY
+        value: 0f7728054020ab4a985f8f5abe22d12d9d0d351918cecc81475609a7872a0940

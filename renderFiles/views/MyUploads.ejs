@@ -44,6 +44,16 @@
                                     <small>Type: <%= singleFile.type %></small><br>
                                     <small>Size: <%= (singleFile.size / 1024).toFixed(2) %> KB</small>
                                 </div>
+                                <div class="col-md-12" style="margin-top: 10px;">
+                                    <form method="POST" action="<%= request.mainURL %>/ShareViaLink">
+                                        <div class="form-group">
+                                            <label for="sharedWithUsername">Share with (username):</label>
+                                            <input type="text" name="sharedWithUsername" id="sharedWithUsername" class="form-control" placeholder="Enter username" required>
+                                            <input type="hidden" name="_id" value="<%= singleFile._id %>" />
+                                        </div>
+                                        <button type="submit" class="btn btn-primary">Share</button>
+                                    </form>
+                                </div>
                             </div>
                         </div>
                     </div>

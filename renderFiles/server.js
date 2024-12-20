@@ -51,23 +51,31 @@ var mainURL = "https://cloudhack-project.onrender.com";
 var database = null;
 
 // Encryption and Decryption Constants
-const algorithm = "aes-256-ctr";
+const algorithm = "aes-256-cbc";
 const secretKey = process.env.SECRET_KEY || "your_secret_key";
+const iv = crypto.randomBytes(16);
 
-// Encrypt Function
-function encrypt(buffer) {
-    const cipher = crypto.createCipher(algorithm, secretKey);
-    const encrypted = Buffer.concat([cipher.update(buffer), cipher.final()]);
-    return encrypted;
+
+function encrypt(data) {
+    const cipher = crypto.createCipheriv(algorithm, secretKey, iv);
+    let encrypted = cipher.update(data);
+    encrypted = Buffer.concat([encrypted, cipher.final()]);
+    return {
+        iv: iv.toString('hex'),
+        content: encrypted.toString('hex'),
+    };
 }
 
-// Decrypt Function
-function decrypt(buffer) {
-    const decipher = crypto.createDecipher(algorithm, secretKey);
-    const decrypted = Buffer.concat([decipher.update(buffer), decipher.final()]);
-    return decrypted;
+function decrypt(encrypted) {
+    const decipher = crypto.createDecipheriv(
+        algorithm,
+        secretKey,
+        Buffer.from(encrypted.iv, 'hex')
+    );
+    let decrypted = decipher.update(Buffer.from(encrypted.content, 'hex'));
+    decrypted = Buffer.concat([decrypted, decipher.final()]);
+    return decrypted.toString();
 }
-
 
 // app middleware to attach main URL and user object with each request
 app.use(function (request, result, next) {
@@ -581,58 +589,66 @@ app.get("/SharedWithMe", async function (request, result) {
 
         // upload new file
         app.post("/UploadFile", async function (request, result) {
-            if (request.session.user) {
-                const user = await database.collection("users").findOne({
-                    "_id": ObjectId(request.session.user._id)
+    if (request.session.user) {
+        try {
+            const user = await database.collection("users").findOne({
+                "_id": ObjectId(request.session.user._id)
+            });
+
+            if (request.files.file.size > 0) {
+                const fileBuffer = fileSystem.readFileSync(request.files.file.path);
+
+                // Encrypt the file
+                const encryptedFile = encrypt(fileBuffer);
+
+                // Prepare file metadata
+                const uploadedObj = {
+                    _id: ObjectId(),
+                    size: request.files.file.size,
+                    name: request.files.file.name,
+                    type: request.files.file.type,
+                    encrypted: true, // Indicate the file is encrypted
+                    createdAt: new Date().getTime(),
+                };
+
+                // Save the encrypted file's metadata and content to MongoDB
+                await database.collection("files").insertOne({
+                    ...uploadedObj,
+                    data: encryptedFile, // Store encrypted data
+                    uploadedBy: {
+                        _id: user._id,
+                        email: user.email,
+                    },
                 });
 
-                if (request.files.file.size > 0) {
-                    const fileBuffer = fileSystem.readFileSync(request.files.file.path);
+                // Update the `user.uploaded` array
+                await database.collection("users").updateOne(
+                    { "_id": ObjectId(request.session.user._id) },
+                    { $push: { uploaded: uploadedObj } }
+                );
 
-                    // Encrypt the file
-                    const encryptedFile = encrypt(fileBuffer);
+                // Remove temporary file
+                fileSystem.unlinkSync(request.files.file.path);
 
-                    // Prepare file metadata
-                    const uploadedObj = {
-                        _id: ObjectId(),
-                        size: request.files.file.size,
-                        name: request.files.file.name,
-                        type: request.files.file.type,
-                        encrypted: true, // Indicate the file is encrypted
-                        createdAt: new Date().getTime(),
-                    };
-
-                    // Save the encrypted file to MongoDB
-                    await database.collection("files").insertOne({
-                        ...uploadedObj,
-                        data: encryptedFile,
-                        uploadedBy: {
-                            _id: user._id,
-                            email: user.email,
-                        },
-                    });
-
-                    // Update the `user.uploaded` array
-                    await database.collection("users").updateOne(
-                        { "_id": ObjectId(request.session.user._id) },
-                        { $push: { uploaded: uploadedObj } }
-                    );
-
-                    // Remove temporary file
-                    fileSystem.unlinkSync(request.files.file.path);
-
-                    request.session.status = "success";
-                    request.session.message = "File has been uploaded and encrypted.";
-                    return result.redirect("/MyUploads");
-                }
-
-                request.session.status = "error";
-                request.session.message = "Please select a valid file.";
-                return result.render("MyUploads", { request });
+                request.session.status = "success";
+                request.session.message = "File has been uploaded and encrypted.";
+                return result.redirect("/MyUploads");
             }
 
-            result.redirect("/Login");
-        });
+            request.session.status = "error";
+            request.session.message = "Please select a valid file.";
+            return result.redirect("/MyUploads");
+        } catch (error) {
+            console.error("Error uploading file:", error);
+            request.session.status = "error";
+            request.session.message = "File upload failed. Please try again.";
+            return result.redirect("/MyUploads");
+        }
+    }
+
+    result.redirect("/Login");
+});
+
 
 
         // logout the user

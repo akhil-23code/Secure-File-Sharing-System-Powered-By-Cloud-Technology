@@ -388,8 +388,8 @@ app.get("/SharedWithMe", async function (request, result) {
 
 
         app.post("/ShareViaLink", async function (request, result) {
-    const _id = request.fields._id;
-    const sharedWithUsername = request.fields.sharedWith; // The username of User 2
+    const _id = request.fields._id; // File ID
+    const sharedWithUsername = request.fields.sharedWith; // Username of the recipient
 
     if (request.session.user) {
         const user1 = await database.collection("users").findOne({
@@ -434,10 +434,21 @@ app.get("/SharedWithMe", async function (request, result) {
             createdAt: new Date(),
         });
 
-        // Add file to "sharedWithMe" array of User 2
+        // Add the file to the `sharedWithMe` array of User 2
         await database.collection("users").updateOne(
             { _id: user2._id },
-            { $push: { sharedWithMe: file } }
+            {
+                $push: {
+                    sharedWithMe: {
+                        _id: file._id,
+                        name: file.name,
+                        type: file.type,
+                        size: file.size,
+                        sharedBy: user1.username,
+                        sharedAt: new Date(),
+                    },
+                },
+            }
         );
 
         request.session.status = "success";

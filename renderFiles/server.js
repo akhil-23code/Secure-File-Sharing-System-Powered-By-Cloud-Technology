@@ -619,7 +619,6 @@ app.get("/SharedWithMe", async function (request, result) {
         });
 
         // view all files uploaded by logged-in user
-         // view all files uploaded by logged-in user
         app.get("/MyUploads", async function (request, result) {
             if (request.session.user) {
 
@@ -642,14 +641,21 @@ app.get("/SharedWithMe", async function (request, result) {
         });
 
         // upload new file
-        app.post("/UploadFile", async function (request, result) {
+        // upload new file
+app.post("/UploadFile", async function (request, result) {
     if (request.session.user) {
         try {
             const user = await database.collection("users").findOne({
                 "_id": ObjectId(request.session.user._id)
             });
 
-            if (request.files.file.size > 0) {
+            if (!user) {
+                request.session.status = "error";
+                request.session.message = "User not found. Please log in again.";
+                return result.redirect("/Login");
+            }
+
+            if (request.files.file && request.files.file.size > 0) {
                 const fileBuffer = fileSystem.readFileSync(request.files.file.path);
 
                 // Encrypt the file
@@ -657,7 +663,7 @@ app.get("/SharedWithMe", async function (request, result) {
 
                 // Prepare file metadata
                 const uploadedObj = {
-                    _id: ObjectId(),
+                    _id: new ObjectId(), // Generate a new ObjectId
                     size: request.files.file.size,
                     name: request.files.file.name,
                     type: request.files.file.type,
@@ -665,17 +671,17 @@ app.get("/SharedWithMe", async function (request, result) {
                     createdAt: new Date().getTime(),
                 };
 
-                // Save file metadata and content to the database
+                // Save file metadata and encrypted content to the database
                 await database.collection("files").insertOne({
                     ...uploadedObj,
-                    data: encryptedFile,
+                    data: encryptedFile, // Store the encrypted file
                     uploadedBy: {
                         _id: user._id,
                         email: user.email,
                     },
                 });
 
-                // Add to user's uploaded files array
+                // Add the uploaded file's metadata to the user's uploaded array
                 await database.collection("users").updateOne(
                     { "_id": ObjectId(request.session.user._id) },
                     { $push: { uploaded: uploadedObj } }
@@ -684,24 +690,37 @@ app.get("/SharedWithMe", async function (request, result) {
                 // Clean up temporary file
                 fileSystem.unlinkSync(request.files.file.path);
 
+                // Set success message and redirect
                 request.session.status = "success";
                 request.session.message = "File uploaded and encrypted successfully.";
                 return result.redirect("/MyUploads");
             }
 
+            // Handle case where no valid file is selected
             request.session.status = "error";
             request.session.message = "Please select a valid file to upload.";
             return result.redirect("/MyUploads");
         } catch (error) {
             console.error("File upload error:", error);
+
+            // Handle specific error for invalid ObjectId
+            if (error instanceof mongodb.MongoServerError) {
+                request.session.message = "Invalid user ID format.";
+            } else if (error.message.includes("ObjectId")) {
+                request.session.message = "Error processing file ID.";
+            } else {
+                request.session.message = "File upload failed. Please try again.";
+            }
+
             request.session.status = "error";
-            request.session.message = "File upload failed. Please try again.";
             return result.redirect("/MyUploads");
         }
     }
 
+    // Redirect to login if session is not active
     result.redirect("/Login");
 });
+
 
 
 

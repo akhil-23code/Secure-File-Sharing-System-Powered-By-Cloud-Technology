@@ -52,7 +52,7 @@ var database = null;
 
 // Encryption and Decryption Constants
 const algorithm = "aes-256-cbc";
-const secretKey = process.env.SECRET_KEY || "your_secret_key";
+const secretKey = (process.env.SECRET_KEY || "your_secret_key").padEnd(32, "0").slice(0, 32);
 const iv = crypto.randomBytes(16);
 
 

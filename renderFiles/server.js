@@ -53,7 +53,8 @@ var database = null;
 // Encryption and Decryption Constants
 const algorithm = "aes-256-cbc";
 const secretKey = (process.env.SECRET_KEY || "your_secret_key").padEnd(32, "0").slice(0, 32);
-const iv = crypto.randomBytes(16);
+// const iv = crypto.randomBytes(16);
+const iv = Buffer.alloc(16,0);
 
 
 function encrypt(data) {
@@ -66,16 +67,22 @@ function encrypt(data) {
     };
 }
 
-function decrypt(encrypted) {
-    const decipher = crypto.createDecipheriv(
-        algorithm,
-        secretKey,
-        Buffer.from(encrypted.iv, 'hex')
-    );
-    let decrypted = decipher.update(Buffer.from(encrypted.content, 'hex'));
-    decrypted = Buffer.concat([decrypted, decipher.final()]);
-    return decrypted.toString();
+function decrypt(encryptedText) {
+    const decipher = crypto.createDecipheriv(algorithm, Buffer.from(secretKey, 'hex'), iv);
+    let decrypted = decipher.update(encryptedText, 'base64', 'utf8');
+    decrypted += decipher.final('utf8');
+    return decrypted;
 }
+// function decrypt(encrypted) {
+//     const decipher = crypto.createDecipheriv(
+//         algorithm,
+//         secretKey,
+//         Buffer.from(encrypted.iv, 'hex')
+//     );
+//     let decrypted = decipher.update(Buffer.from(encrypted.content, 'hex'));
+//     decrypted = Buffer.concat([decrypted, decipher.final()]);
+//     return decrypted.toString();
+// }
 
 // app middleware to attach main URL and user object with each request
 app.use(function (request, result, next) {
@@ -333,6 +340,13 @@ http.listen(3000, function () {
     try {
         const fileId = request.params.fileId;
 
+        // Validate ObjectId
+        if (!ObjectId.isValid(fileId)) {
+            request.session.status = "error";
+            request.session.message = "Invalid file ID.";
+            return result.redirect("/SharedWithMe");
+        }
+
         // Find the file in the database
         const file = await database.collection("files").findOne({
             _id: ObjectId(fileId),
@@ -344,13 +358,19 @@ http.listen(3000, function () {
             return result.redirect("/SharedWithMe");
         }
 
+        // Decrypt the file data if it's encrypted
+        let fileData = file.data;
+        if (file.encrypted) {
+            fileData = decrypt(file.data);
+        }
+
         // Send the file as a downloadable response
         result.set({
             "Content-Type": file.type,
             "Content-Disposition": `attachment; filename="${file.name}"`,
         });
 
-        result.send(Buffer.from(file.data, "base64"));
+        result.send(Buffer.from(fileData, "base64"));
     } catch (error) {
         console.error("Error downloading shared file:", error);
         request.session.status = "error";
@@ -358,6 +378,7 @@ http.listen(3000, function () {
         return result.redirect("/SharedWithMe");
     }
 });
+
 
 
 

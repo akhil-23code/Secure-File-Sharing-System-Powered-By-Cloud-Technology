@@ -14,18 +14,20 @@
             <% sharedFiles.forEach(function (file) { %>
                 <div class="col-md-4" style="margin-top: 30px;">
                     <div class="card">
-                        <div class="card-body" style="font-size: 100px; text-align: center; height: 300px;">
+                        <div class="card-body" style="font-size: 100px; text-align: center; height: 200px;">
                             <i class="fa fa-file"></i>
                         </div>
                         <div class="card-footer">
                             <div class="row">
-                                <div class="col-md-8">
-                                    <h3><%= file.name %></h3>
+                                <div class="col-md-12">
+                                    <h5><%= file.name %></h5>
+                                    <small>Shared by: <%= file.sharedBy %></small><br>
+                                    <small>Size: <%= (file.size / 1024).toFixed(2) %> KB</small>
                                 </div>
-                                <div class="col-md-4">
-                                    <a href="<%= request.mainURL %>/SharedViaLink/<%= file._id %>" 
-                                        class="btn btn-primary btn-block">
-                                        Open Link
+                                <div class="col-md-12" style="margin-top: 10px;">
+                                    <a href="<%= request.mainURL %>/DownloadSharedFile/<%= file._id %>" 
+                                        class="btn btn-success btn-block">
+                                        Download
                                     </a>
                                 </div>
                             </div>

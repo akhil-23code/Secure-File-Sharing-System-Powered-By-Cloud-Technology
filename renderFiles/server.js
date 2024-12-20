@@ -288,6 +288,46 @@ http.listen(3000, function () {
             });
         });
 
+
+    app.get("/DownloadSharedFile/:fileId", async function (request, result) {
+    if (!request.session.user) {
+        return result.redirect("/Login");
+    }
+
+    try {
+        const fileId = request.params.fileId;
+
+        // Find the file in the `files` collection
+        const file = await database.collection("files").findOne({
+            _id: ObjectId(fileId),
+        });
+
+        if (!file) {
+            request.session.status = "error";
+            request.session.message = "File not found.";
+            return result.redirect("/SharedWithMe");
+        }
+
+        // Decrypt the file if necessary
+        const fileData = file.encrypted ? decrypt(file.data) : file.data;
+
+        // Send the file as a download
+        result.set({
+            "Content-Type": file.type,
+            "Content-Disposition": `attachment; filename="${file.name}"`,
+        });
+
+        result.send(Buffer.from(fileData));
+    } catch (error) {
+        console.error("Error downloading shared file:", error);
+        request.session.status = "error";
+        request.session.message = "Failed to download the file. Please try again.";
+        return result.redirect("/SharedWithMe");
+    }
+});
+
+
+        
         // Get all files shared with the logged-in user
 app.get("/SharedWithMe", async function (request, result) {
     if (!request.session.user) {

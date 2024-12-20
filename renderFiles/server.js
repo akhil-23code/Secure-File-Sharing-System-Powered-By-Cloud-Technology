@@ -580,34 +580,91 @@ app.get("/SharedWithMe", async function (request, result) {
 
         
         // delete uploaded file
-        app.post("/DeleteFile", async function (request, result) {
-            const _id = request.fields._id;
+        // app.post("/DeleteFile", async function (request, result) {
+        //     const _id = request.fields._id;
 
-            if (request.session.user) {
-                var user = await database.collection("users").findOne({
-                    "_id": ObjectId(request.session.user._id)
-                });
+        //     if (request.session.user) {
+        //         var user = await database.collection("users").findOne({
+        //             "_id": ObjectId(request.session.user._id)
+        //         });
 
-                var updatedArray = await removeFileReturnUpdated(user.uploaded, _id);
-                for (var a = 0; a < updatedArray.length; a++) {
-                    updatedArray[a]._id = ObjectId(updatedArray[a]._id);
-                }
+        //         var updatedArray = await removeFileReturnUpdated(user.uploaded, _id);
+        //         for (var a = 0; a < updatedArray.length; a++) {
+        //             updatedArray[a]._id = ObjectId(updatedArray[a]._id);
+        //         }
 
-                await database.collection("users").updateOne({
-                    "_id": ObjectId(request.session.user._id)
-                }, {
-                    $set: {
-                        "uploaded": updatedArray
-                    }
-                });
+        //         await database.collection("users").updateOne({
+        //             "_id": ObjectId(request.session.user._id)
+        //         }, {
+        //             $set: {
+        //                 "uploaded": updatedArray
+        //             }
+        //         });
 
-                const backURL = request.header('Referer') || '/';
-                result.redirect(backURL);
-                return false;
+        //         const backURL = request.header('Referer') || '/';
+        //         result.redirect(backURL);
+        //         return false;
+        //     }
+
+        //     result.redirect("/Login");
+        // });
+        // Delete uploaded file
+app.post("/DeleteFile", async function (request, result) {
+    const _id = request.fields._id;
+
+    if (request.session.user) {
+        try {
+            const userId = ObjectId(request.session.user._id);
+
+            // Fetch the logged-in user
+            const user = await database.collection("users").findOne({ _id: userId });
+            if (!user) {
+                request.session.status = "error";
+                request.session.message = "User not found. Please log in again.";
+                return result.redirect("/Login");
             }
 
-            result.redirect("/Login");
-        });
+            // Validate the file ID
+            if (!ObjectId.isValid(_id)) {
+                request.session.status = "error";
+                request.session.message = "Invalid file ID.";
+                return result.redirect("/MyUploads");
+            }
+
+            // Find and remove the file from the user's uploaded array
+            const updatedArray = removeFileReturnUpdated(user.uploaded, _id);
+
+            // Update the user's uploaded files in the database
+            await database.collection("users").updateOne(
+                { _id: userId },
+                { $set: { uploaded: updatedArray } }
+            );
+
+            // Delete the file from the filesystem and database
+            const file = await database.collection("files").findOne({ _id: ObjectId(_id) });
+            if (file) {
+                try {
+                    fileSystem.unlinkSync(file.filePath); // Remove the physical file
+                } catch (err) {
+                    console.error("Error deleting file from filesystem:", err);
+                }
+                await database.collection("files").deleteOne({ _id: ObjectId(_id) });
+            }
+
+            request.session.status = "success";
+            request.session.message = "File deleted successfully.";
+            return result.redirect("/MyUploads");
+        } catch (error) {
+            console.error("Error deleting file:", error);
+            request.session.status = "error";
+            request.session.message = "An error occurred while deleting the file.";
+            return result.redirect("/MyUploads");
+        }
+    }
+
+    result.redirect("/Login");
+});
+
 
         // download file
         app.post("/DownloadFile", async function (request, result) {

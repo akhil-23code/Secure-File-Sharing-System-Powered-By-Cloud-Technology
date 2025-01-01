@@ -3,7 +3,31 @@
 <div class="container" style="margin-top: 50px; margin-bottom: 50px;">
     <h2 class="text-center">Blog</h2>
     <p class="text-center">Stay updated with the latest news, tips, and tutorials.</p>
-    <img src="<%= request.mainURL %>/public/img/blur-blog.png" style="width: 100%; max-width:600px; display:block; margin:auto;" />
+
+    <!-- Blog Post 1 -->
+    <div class="blog-post" style="margin-top: 30px;">
+        <h3>Introducing Our Secure File Sharing System</h3>
+        <p>Our project focuses on designing and developing a secure file-sharing system leveraging cloud technology to ensure confidentiality, integrity, and availability of data. By addressing concerns such as unauthorized access and data breaches, we aim to provide users with a robust platform featuring AES encryption and RSA for secure key management. The solution empowers individuals to upload and share files securely across devices.</p>
+        <img src="<%= request.mainURL %>/public/img/secure-sharing.png" style="width: 100%; max-width:600px; display:block; margin:auto;" />
+        <p><small>Posted on September 8, 2024</small></p>
+    </div>
+
+    <!-- Blog Post 2 -->
+    <div class="blog-post" style="margin-top: 30px;">
+        <h3>Key Features of Our System</h3>
+        <p>Our secure file-sharing system includes essential features such as end-to-end AES-256 encryption, role-based access control, and file integrity checks using hashing mechanisms. The system is designed for seamless interoperability with popular cloud services like Google Drive and Dropbox while maintaining local encryption to ensure data ownership and security.</p>
+        <img src="<%= request.mainURL %>/public/img/key-features.png" style="width: 100%; max-width:600px; display:block; margin:auto;" />
+        <p><small>Posted on October 28, 2024</small></p>
+    </div>
+
+    <!-- Blog Post 3 -->
+    <div class="blog-post" style="margin-top: 30px;">
+        <h3>Project Highlights and Future Scope</h3>
+        <p>The development process involved creating a desktop application for encryption and decryption alongside a web application for user registration and file management. Future enhancements include advanced analytics, AI-driven threat detection, and integration with emerging cloud technologies. This project addresses critical cloud security challenges, fostering trust and privacy in the digital world.</p>
+        <img src="<%= request.mainURL %>/public/img/project-highlights.png" style="width: 100%; max-width:600px; display:block; margin:auto;" />
+        <p><small>Posted on December 24, 2024</small></p>
+    </div>
+
 </div>
 
 <%- include("includes/footer") %>
